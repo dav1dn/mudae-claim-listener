@@ -4,10 +4,7 @@ from typing import Dict, Union
 
 import discord
 from discord import Member, Message, TextChannel, colour
-from discord.abc import GuildChannel
 from discord.embeds import Embed
-from discord.enums import Enum
-from discord.guild import Guild
 from expiringdict import ExpiringDict
 
 client = discord.Client()
@@ -78,6 +75,8 @@ async def on_message(m: Message):
                 type="rich",
                 url=m.jump_url,
             )
+            embed.set_author(name=user)
+
             cached_character: Union[Embed, None] = CharacterEmbeds.get(waifu)
 
             if cached_character:
@@ -93,7 +92,6 @@ async def on_message(m: Message):
                     ),
                 )
                 embed.set_image(url=cached_character.image.url)
-                embed.set_author(name=user)
                 embed.add_field(name="\u200B", value=f"[Jump to Message]({m.jump_url})")
 
             await Channels["Announcements"].send(
