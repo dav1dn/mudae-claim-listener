@@ -1,8 +1,10 @@
+import asyncio
 import os
 import re
 from typing import Dict, Union
 
 import discord
+import pendulum
 from discord import Member, Message, TextChannel, colour
 from discord.embeds import Embed
 from expiringdict import ExpiringDict
@@ -27,6 +29,8 @@ MARRIAGE_REGEXES = list(
     )
 )
 
+TIMER_REGEX = re.compile(r"\*\*(?P<hours>\d{1,2}h)?\s?(?P<minutes>\d{1,2})\*\*\smin\.")
+
 Channels = {
     "Announcements": None,
 }
@@ -43,6 +47,7 @@ async def on_ready():
 async def on_message(m: Message):
     channel: TextChannel = m.channel
     author: Member = m.author
+    content = str(m.content)
 
     # ignore messages outside of category
     if channel.category_id != CATEGORY_ID or author == client.user:
@@ -53,7 +58,7 @@ async def on_message(m: Message):
         return
 
     if len(m.embeds) > 0:
-        # check if character embed
+        # check if message has a character embed
         embed = m.embeds[0]
         character_name = str(embed.author.name)
         if not character_name:
@@ -61,6 +66,7 @@ async def on_message(m: Message):
 
         CharacterEmbeds[character_name] = embed
 
+    # check if message is a marriage
     for regex in MARRIAGE_REGEXES:
         if match := regex.search(m.content):
             user = str(match.group("name"))
@@ -98,5 +104,37 @@ async def on_message(m: Message):
                 content=f"👉 👉 **{user}** claimed **{waifu}**!", embed=embed
             )
 
+    # check if asking for timers
+    if content.startswith('$tu f'):            
+        try:
+            mudae_reply = await client.wait_for('message', check=lambda x: True, timeout=5.0)
+        except asyncio.TimeoutError:
+            return
 
+        if not isinstance(mudae_reply, Message):
+            return
+
+        lines_to_send = []
+
+        message_lines = mudae_reply.content.split('\n')
+        for line in message_lines:
+            def repl(match):
+                full_match = match.group(0).replace('\n', '')
+                hour = match.group('hours').replace('h', '') if match.group('hours') else 0
+                minutes = match.group('minutes')
+
+                return f"{full_match} [{pendulum.now().add(hours=int(hour), minutes=int(minutes)).in_tz('America/Los_Angeles').format('ddd M/D h:mmA zz')}]"
+
+            line = re.sub(TIMER_REGEX, repl, line)
+            line = re.sub(r"<:kakera:\d+>", " Ka", line)
+            lines_to_send.append(line)   
+
+        if lines_to_send:
+            await m.channel.send(
+                content="\n".join(lines_to_send)
+            )   
+            await mudae_reply.delete()
+
+
+        
 client.run(TOKEN)
