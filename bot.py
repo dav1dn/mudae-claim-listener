@@ -53,61 +53,62 @@ async def on_message(m: Message):
     if channel.category_id != CATEGORY_ID or author == client.user:
         return
 
-    # messages from Mudae
-    if author.id not in [OWN_USER_ID, MUDAE_USER_ID]:
-        return
-
-    if len(m.embeds) > 0:
-        # check if message has a character embed
-        embed = m.embeds[0]
-        character_name = str(embed.author.name)
-        if not character_name:
-            return
-
-        CharacterEmbeds[character_name] = embed
-
-    # check if message is a marriage
-    for regex in MARRIAGE_REGEXES:
-        if match := regex.search(m.content):
-            user = str(match.group("name"))
-            waifu = str(match.group("waifu"))
-
-            if not all([user, waifu]):
+    if author.id == MUDAE_USER_ID:
+        if len(m.embeds) > 0:
+            # check if message has a character embed
+            embed = m.embeds[0]
+            character_name = str(embed.author.name)
+            if not character_name:
                 return
 
-            embed: Embed = discord.Embed(
-                title=f"{waifu}",
-                colour=colour.Colour.red(),
-                type="rich",
-                url=m.jump_url,
-            )
-            embed.set_author(name=user)
+            CharacterEmbeds[character_name] = embed
 
-            cached_character: Union[Embed, None] = CharacterEmbeds.get(waifu)
+        # check if message is a marriage
+        for regex in MARRIAGE_REGEXES:
+            if match := regex.search(m.content):
+                user = str(match.group("name"))
+                waifu = str(match.group("waifu"))
 
-            if cached_character:
-                embed.description = re.sub(
-                    r"<:\S+:\d+>",
-                    "",
-                    re.sub(
-                        r"<:kakera:\d+>",
-                        " Ka",
-                        str(cached_character.description).replace(
-                            "React with any emoji to claim!", ""
-                        ),
-                    ),
+                if not all([user, waifu]):
+                    return
+
+                embed: Embed = discord.Embed(
+                    title=f"{waifu}",
+                    colour=colour.Colour.red(),
+                    type="rich",
+                    url=m.jump_url,
                 )
-                embed.set_image(url=cached_character.image.url)
-                embed.add_field(name="\u200B", value=f"[Jump to Message]({m.jump_url})")
+                embed.set_author(name=user)
 
-            await Channels["Announcements"].send(
-                content=f"👉 👉 **{user}** claimed **{waifu}**!", embed=embed
-            )
+                cached_character: Union[Embed, None] = CharacterEmbeds.get(waifu)
+
+                if cached_character:
+                    embed.description = re.sub(
+                        r"<:\S+:\d+>",
+                        "",
+                        re.sub(
+                            r"<:kakera:\d+>",
+                            " Ka",
+                            str(cached_character.description).replace(
+                                "React with any emoji to claim!", ""
+                            ),
+                        ),
+                    )
+                    embed.set_image(url=cached_character.image.url)
+                    embed.add_field(
+                        name="\u200B", value=f"[Jump to Message]({m.jump_url})"
+                    )
+
+                await Channels["Announcements"].send(
+                    content=f"👉 👉 **{user}** claimed **{waifu}**!", embed=embed
+                )
 
     # check if asking for timers
-    if content.startswith('$tu f'):            
+    if content.startswith("$tu f"):
         try:
-            mudae_reply = await client.wait_for('message', check=lambda x: True, timeout=5.0)
+            mudae_reply = await client.wait_for(
+                "message", check=lambda x: x.author.id == MUDAE_USER_ID, timeout=5.0
+            )
         except asyncio.TimeoutError:
             return
 
@@ -116,25 +117,25 @@ async def on_message(m: Message):
 
         lines_to_send = []
 
-        message_lines = mudae_reply.content.split('\n')
+        message_lines = mudae_reply.content.split("\n")
         for line in message_lines:
+
             def repl(match):
-                full_match = match.group(0).replace('\n', '')
-                hour = match.group('hours').replace('h', '') if match.group('hours') else 0
-                minutes = match.group('minutes')
+                full_match = match.group(0).replace("\n", "")
+                hour = (
+                    match.group("hours").replace("h", "") if match.group("hours") else 0
+                )
+                minutes = match.group("minutes")
 
                 return f"{full_match} [{pendulum.now().add(hours=int(hour), minutes=int(minutes)).in_tz('America/Los_Angeles').format('ddd M/D h:mmA zz')}]"
 
             line = re.sub(TIMER_REGEX, repl, line)
             line = re.sub(r"<:kakera:\d+>", " Ka", line)
-            lines_to_send.append(line)   
+            lines_to_send.append(line)
 
         if lines_to_send:
-            await m.channel.send(
-                content="\n".join(lines_to_send)
-            )   
+            await m.channel.send(content="\n".join(lines_to_send))
             await mudae_reply.delete()
 
 
-        
 client.run(TOKEN)
