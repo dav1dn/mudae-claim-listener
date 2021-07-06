@@ -25,6 +25,7 @@ MARRIAGE_REGEXES = list(
         [
             r"\*\*(?P<name>.+)\*\* and \*\*(?P<waifu>.+)\*\* are now married!",
             r"\*\*(?P<name>.+)\*\* respects \*\*(?P<waifu>.+)\*\*",
+            r"\*\*(?P<waifu>.+)\*\* stepped on \*\*(?P<name>.+)\*\*",
         ],
     )
 )
