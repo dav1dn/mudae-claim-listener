@@ -75,6 +75,8 @@ async def on_ready():
     Channels["Announcements"] = client.get_channel(860401332086636554)
     Channels["Rolls"] = client.get_channel(ROLLS_CHANNEL_ID)
 
+def get_emoji_by_name(name):
+    return discord.utils.find(lambda e: e.name == name, client.emojis) or name
 
 @client.event
 async def on_message(m: Message):
@@ -130,8 +132,8 @@ async def on_message(m: Message):
                             key_type = match.group("key_type")
                             num_keys = int(match.group("num_keys"))
                             logger.info("Received key for [%s]: [%s], [%s]!", character_name, key_type, num_keys, extra={ "description": description })
-                            emoji = discord.utils.find(lambda e: e.name == key_type, client.emojis)
-                            if num_keys > 5:
+                            emoji = get_emoji_by_name(key_type)
+                            if num_keys >= 5:
                                 await Channels["Announcements"].send(
                                     content=f"**{belongs_to}** rolled a {str(emoji)} ({num_keys}) for {character_name}!"
                                 )
@@ -141,9 +143,9 @@ async def on_message(m: Message):
 
                         try:
                             reaction, user = await client.wait_for(
-                                "reaction_add", timeout=1.0, check=check
+                                "reaction_add", timeout=2.0, check=check
                             )
-                            kakera_react = strip_emojis(str(reaction.emoji))
+                            kakera_react = get_emoji_by_name(reaction.emoji.name)
                             logger.info("Rolled a Kakera react [%s]", str(kakera_react))
                         except:
                             pass
@@ -185,12 +187,12 @@ async def on_message(m: Message):
                         )
 
                         claimable_rolls = sorted(
-                            claimable_rolls, key=lambda roll: roll["kakera_value"]
+                            claimable_rolls, key=lambda roll: roll["kakera_value"], reverse=True
                         )
 
                         claimable_rolls_text = "\n".join(
                             [
-                                f"{'[**%s**](%s)' % (roll['name'], roll['message_url']) if roll['kakera_value'] > average_kakera_value else '[**%s**]' % roll['name']} \t {roll['kakera_value']} <:kakera:879969751231791194> \t ]"
+                                f"{'[[**%s**](%s)' % (roll['name'], roll['message_url']) if roll['kakera_value'] > average_kakera_value else '[**%s**' % roll['name']} \t {roll['kakera_value']} <:kakera:879969751231791194> \t ]"
                                 for roll in claimable_rolls
                             ]
                         )
