@@ -1,13 +1,19 @@
 import asyncio
 import os
 import re
-from typing import Dict, Union
+import logging
+
+from typing import Dict, List, Union, TypedDict
 
 import discord
 import pendulum
 from discord import Member, Message, TextChannel, colour
-from discord.embeds import Embed
+from discord.embeds import Embed, EmptyEmbed
 from expiringdict import ExpiringDict
+from pprint import pprint
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 client = discord.Client()
 
@@ -16,6 +22,8 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 # CONFIG
 CATEGORY_ID = 854500814592409661
 ANNOUNCEMENTS_CHANNEL_ID = 860401332086636554
+ROLLS_CHANNEL_ID = 853839598906900494
+# ROLLS_CHANNEL_ID = 858475878094864414
 MUDAE_USER_ID = 432610292342587392
 OWN_USER_ID = 54422593528143872
 
@@ -31,21 +39,47 @@ MARRIAGE_REGEXES = list(
 )
 
 TIMER_REGEX = re.compile(r"\*\*(?P<hours>\d{1,2}h)?\s?(?P<minutes>\d{1,2})\*\*\smin\.")
+KAKERA_IN_DESCRIPTION_REGEX = re.compile(r"\*\*(?P<value>\d{2,4})\*\*")
+BELONGS_TO_FOOTER_REGEX = re.compile(r"Belongs to (?P<owner>.*)")
 
 Channels = {
     "Announcements": None,
+    "Rolls": None,
 }
 
+
+def strip_emojis(str):
+    return re.sub(r"\d+", "", str)
+
+
+class RecentRoll(TypedDict):
+    name: str
+    kakera_value: int
+    message_url: str
+    is_kakera_react: Union[str, bool]
+    belongs_to: Union[str, None]
+
+
 CharacterEmbeds: Dict[str, Embed] = ExpiringDict(max_len=300, max_age_seconds=600)
+RecentRolls: Dict[int, RecentRoll] = ExpiringDict(
+    max_len=30, max_age_seconds=120
+)  # message_id to roll
+
+ALMOST_DONE_ROLLING = False
+ROLLS_LEFT = 3
 
 
 @client.event
 async def on_ready():
     Channels["Announcements"] = client.get_channel(860401332086636554)
+    Channels["Rolls"] = client.get_channel(ROLLS_CHANNEL_ID)
 
 
 @client.event
 async def on_message(m: Message):
+    global ALMOST_DONE_ROLLING
+    global ROLLS_LEFT
+
     channel: TextChannel = m.channel
     author: Member = m.author
     content = str(m.content)
@@ -63,6 +97,113 @@ async def on_message(m: Message):
                 return
 
             CharacterEmbeds[character_name] = embed
+
+            # rolls channel
+            if channel == Channels["Rolls"]:
+                description = embed.description
+                if isinstance(description, str) and (
+                    match := KAKERA_IN_DESCRIPTION_REGEX.search(description)
+                ):
+                    ka_value = match.group("value")
+                    logger.info(
+                        "Rolled [%s] in message_id=[%s]",
+                        character_name,
+                        m.id,
+                        extra={"ka": ka_value},
+                    )
+                    footer = embed.footer
+
+                    kakera_react = False
+                    belongs_to = None
+                    if (
+                        footer != EmptyEmbed
+                        and footer.text
+                        and (match := BELONGS_TO_FOOTER_REGEX.search(footer.text))
+                    ):
+                        belongs_to = match.group("owner")
+                        kakera_react = True
+
+                        def check(reaction, user):
+                            return user == author and "kakera" in str(reaction.emoji)
+
+                        try:
+                            reaction, user = await client.wait_for(
+                                "reaction_add", timeout=1.0, check=check
+                            )
+                            kakera_react = strip_emojis(str(reaction.emoji))
+                            logger.info("Rolled a Kakera react [%s]", str(kakera_react))
+                        except:
+                            pass
+
+                    roll: RecentRoll = {
+                        "name": character_name,
+                        "kakera_value": int(ka_value),
+                        "message_url": m.jump_url,
+                        "is_kakera_react": kakera_react,
+                        "belongs_to": belongs_to,
+                    }
+
+                    RecentRolls[m.id] = roll
+
+                    if footer != Embed.Empty and "2 ROLLS LEFT" in footer.text:
+                        ALMOST_DONE_ROLLING = True
+
+                    if ALMOST_DONE_ROLLING:
+                        ROLLS_LEFT = ROLLS_LEFT - 1
+
+                    if ROLLS_LEFT <= 0:
+                        rolls = RecentRolls.values()
+                        claimable_rolls = [
+                            roll for roll in rolls if roll["is_kakera_react"] is False
+                        ]
+                        kakera_rolls = [
+                            roll for roll in rolls if roll["is_kakera_react"]
+                        ]
+
+                        average_kakera_value = sum(
+                            [roll["kakera_value"] for roll in claimable_rolls]
+                        ) / len(claimable_rolls)
+
+                        logger.info(
+                            "Finishing rolling. Rolled [%s] characters, of which [%s] were Kakera reacts.",
+                            len(rolls),
+                            len(kakera_rolls),
+                            extra={"rolls": rolls},
+                        )
+
+                        claimable_rolls = sorted(
+                            claimable_rolls, key=lambda roll: roll["kakera_value"]
+                        )
+
+                        claimable_rolls_text = "\n".join(
+                            [
+                                f"{'[**%s**](%s)' % (roll['name'], roll['message_url']) if roll['kakera_value'] > average_kakera_value else '[**%s**]' % roll['name']} \t {roll['kakera_value']} <:kakera:879969751231791194> \t ]"
+                                for roll in claimable_rolls
+                            ]
+                        )
+                        kakera_rolls_text = "\n".join(
+                            [
+                                f"[**{roll['name']}**]({roll['message_url']})\t<{roll['is_kakera_react']}> ({roll['belongs_to']})"
+                                for roll in kakera_rolls
+                            ]
+                        )
+
+                        claimables_embed = discord.Embed(
+                            description=claimable_rolls_text
+                        )
+
+                        kakera_rolls_embed = discord.Embed(
+                            description=kakera_rolls_text
+                        )
+
+                        await Channels["Rolls"].send(
+                            content=f"**Nice rolls!**\n", embed=claimables_embed
+                        )
+                        await Channels["Rolls"].send(embed=kakera_rolls_embed)
+
+                        ALMOST_DONE_ROLLING = False
+                        ROLLS_LEFT = 3
+                        RecentRolls.clear()
 
         # check if message is a marriage
         for regex in MARRIAGE_REGEXES:
