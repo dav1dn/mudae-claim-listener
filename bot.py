@@ -13,6 +13,10 @@ from expiringdict import ExpiringDict
 from pprint import pprint
 
 logging.basicConfig(level=logging.INFO)
+logging.getLogger().addHandler(logging.StreamHandler())
+logging.getLogger().addHandler(logging.FileHandler("out.log"))
+
+
 logger = logging.getLogger(__name__)
 
 client = discord.Client()
