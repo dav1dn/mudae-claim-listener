@@ -39,9 +39,11 @@ MARRIAGE_REGEXES = list(
 )
 
 TIMER_REGEX = re.compile(r"\*\*(?P<hours>\d{1,2}h)?\s?(?P<minutes>\d{1,2})\*\*\smin\.")
-KAKERA_IN_DESCRIPTION_REGEX = re.compile(r"\*\*(?P<value>\d{2,4})\*\*")
+KAKERA_IN_DESCRIPTION_REGEX = re.compile(r"\*\*\+?(?P<value>\d{2,4})\*\*")
 BELONGS_TO_FOOTER_REGEX = re.compile(r"Belongs to (?P<owner>.*)")
-KEY_REGEX = re.compile(r"(?P<key_type>(gold|silver|bronze|chaos)key):\d+>\s\((?P<num_keys>\d{1,2})\)")
+KEY_REGEX = re.compile(
+    r"(?P<key_type>(gold|silver|bronze|chaos)key):\d+>\s\((?P<num_keys>\d{1,2})\)"
+)
 
 Channels = {
     "Announcements": None,
@@ -75,8 +77,10 @@ async def on_ready():
     Channels["Announcements"] = client.get_channel(860401332086636554)
     Channels["Rolls"] = client.get_channel(ROLLS_CHANNEL_ID)
 
+
 def get_emoji_by_name(name):
     return discord.utils.find(lambda e: e.name == name, client.emojis) or name
+
 
 @client.event
 async def on_message(m: Message):
@@ -91,8 +95,10 @@ async def on_message(m: Message):
     if channel.category_id != CATEGORY_ID or author == client.user:
         return
 
-    if author.id == MUDAE_USER_ID:
+    if author.id in [MUDAE_USER_ID, 880010191830134795]:
+        logger.info("Got message [%s] from author [%s]", m.id, author.id)
         if len(m.embeds) > 0:
+            logger.info("Found embed")
             # check if message has a character embed
             embed = m.embeds[0]
             character_name = str(embed.author.name)
@@ -128,10 +134,16 @@ async def on_message(m: Message):
                         belongs_to = match.group("owner")
                         kakera_react = True
 
-                        if (match := KEY_REGEX.search(description)):
+                        if match := KEY_REGEX.search(description):
                             key_type = match.group("key_type")
                             num_keys = int(match.group("num_keys"))
-                            logger.info("Received key for [%s]: [%s], [%s]!", character_name, key_type, num_keys, extra={ "description": description })
+                            logger.info(
+                                "Received key for [%s]: [%s], [%s]!",
+                                character_name,
+                                key_type,
+                                num_keys,
+                                extra={"description": description},
+                            )
                             emoji = get_emoji_by_name(key_type)
                             if num_keys >= 5:
                                 await Channels["Announcements"].send(
@@ -187,7 +199,9 @@ async def on_message(m: Message):
                         )
 
                         claimable_rolls = sorted(
-                            claimable_rolls, key=lambda roll: roll["kakera_value"], reverse=True
+                            claimable_rolls,
+                            key=lambda roll: roll["kakera_value"],
+                            reverse=True,
                         )
 
                         claimable_rolls_text = "\n".join(
@@ -259,6 +273,12 @@ async def on_message(m: Message):
                 await Channels["Announcements"].send(
                     content=f"👉 👉 **{user}** claimed **{waifu}**!", embed=embed
                 )
+
+    if content.startswith("-clear"):
+        ALMOST_DONE_ROLLING = False
+        ROLLS_LEFT = 3
+        RecentRolls.clear()
+        return
 
     # check if asking for timers
     if content.startswith("$tu f"):
