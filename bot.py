@@ -3,19 +3,16 @@ import os
 import re
 import logging
 
-from typing import Dict, List, Union, TypedDict
+from typing import Dict, Union, TypedDict
 
 import discord
 import pendulum
 from discord import Member, Message, TextChannel, colour
 from discord.embeds import Embed, EmptyEmbed
 from expiringdict import ExpiringDict
-from pprint import pprint
 
 logging.basicConfig(level=logging.INFO)
-logging.getLogger().addHandler(logging.StreamHandler())
 logging.getLogger().addHandler(logging.FileHandler("out.log"))
-
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +24,6 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 CATEGORY_ID = 854500814592409661
 ANNOUNCEMENTS_CHANNEL_ID = 860401332086636554
 ROLLS_CHANNEL_ID = 853839598906900494
-# ROLLS_CHANNEL_ID = 858475878094864414
 MUDAE_USER_ID = 432610292342587392
 OWN_USER_ID = 54422593528143872
 
@@ -46,7 +42,7 @@ TIMER_REGEX = re.compile(r"\*\*(?P<hours>\d{1,2}h)?\s?(?P<minutes>\d{1,2})\*\*\s
 KAKERA_IN_DESCRIPTION_REGEX = re.compile(r"\*\*\+?(?P<value>\d{2,4})\*\*")
 BELONGS_TO_FOOTER_REGEX = re.compile(r"Belongs to (?P<owner>.*)")
 KEY_REGEX = re.compile(
-    r"(?P<key_type>(gold|silver|bronze|chaos)key):\d+>\s\((?P<num_keys>\d{1,2})\)"
+    r"(?P<key_type>(gold|silver|bronze|chaos)key):\d+>\s\(\*{2}?(?P<num_keys>\d{1,2})\*{2}?\)"
 )
 
 Channels = {
@@ -102,7 +98,6 @@ async def on_message(m: Message):
     if author.id in [MUDAE_USER_ID, 880010191830134795]:
         logger.info("Got message [%s] from author [%s]", m.id, author.id)
         if len(m.embeds) > 0:
-            logger.info("Found embed")
             # check if message has a character embed
             embed = m.embeds[0]
             character_name = str(embed.author.name)
@@ -139,27 +134,30 @@ async def on_message(m: Message):
                         kakera_react = True
 
                         if match := KEY_REGEX.search(description):
-                            key_type = match.group("key_type")
-                            num_keys = int(match.group("num_keys"))
-                            logger.info(
-                                "Received key for [%s]: [%s], [%s]!",
-                                character_name,
-                                key_type,
-                                num_keys,
-                                extra={"description": description},
-                            )
-                            emoji = get_emoji_by_name(key_type)
-                            if num_keys >= 5:
-                                await Channels["Announcements"].send(
-                                    content=f"**{belongs_to}** rolled a {str(emoji)} ({num_keys}) for {character_name}!"
+                            matches_iter = KEY_REGEX.finditer(description)
+                            for match in matches_iter:
+                                key_type = match.group("key_type")
+                                num_keys = int(match.group("num_keys"))
+                                logger.info(
+                                    "Received key for [%s]: [%s], [%s]!",
+                                    character_name,
+                                    key_type,
+                                    num_keys,
+                                    extra={"description": description},
                                 )
-
-                        def check(reaction, user):
-                            return user == author and "kakera" in str(reaction.emoji)
+                                emoji = get_emoji_by_name(key_type)
+                                if num_keys >= 5:
+                                    await Channels["Announcements"].send(
+                                        content=f"**{belongs_to}** rolled a {str(emoji)} ({num_keys}) for {character_name}!"
+                                    )
 
                         try:
                             reaction, user = await client.wait_for(
-                                "reaction_add", timeout=2.0, check=check
+                                "reaction_add",
+                                timeout=4.0,
+                                check=lambda reaction, user: user == author
+                                and "kakera" in str(reaction.emoji)
+                                and reaction.message.id == m.id,
                             )
                             kakera_react = get_emoji_by_name(reaction.emoji.name)
                             logger.info("Rolled a Kakera react [%s]", str(kakera_react))
@@ -176,7 +174,11 @@ async def on_message(m: Message):
 
                     RecentRolls[m.id] = roll
 
-                    if footer != EmptyEmbed and footer.text and "2 ROLLS LEFT" in footer.text:
+                    if (
+                        footer != EmptyEmbed
+                        and footer.text
+                        and "2 ROLLS LEFT" in footer.text
+                    ):
                         ALMOST_DONE_ROLLING = True
 
                     if ALMOST_DONE_ROLLING:
@@ -260,17 +262,14 @@ async def on_message(m: Message):
 
                 if cached_character:
                     embed.description = re.sub(
-                        r"<:\S+:\d+>",
-                        "",
-                        re.sub(
-                            r"<:kakera:\d+>",
-                            " Ka",
-                            str(cached_character.description).replace(
-                                "React with any emoji to claim!", ""
-                            ),
+                        r"<:kakera:\d+>",
+                        " <:kakera:879969751231791194>",
+                        str(cached_character.description).replace(
+                            "React with any emoji to claim!", ""
                         ),
                     )
-                    embed.set_image(url=cached_character.image.url)
+
+                    embed.set_thumbnail(url=cached_character.image.url)
                     embed.add_field(
                         name="\u200B", value=f"[Jump to Message]({m.jump_url})"
                     )
@@ -312,7 +311,7 @@ async def on_message(m: Message):
                 return f"{full_match} [{pendulum.now().add(hours=int(hour), minutes=int(minutes)).in_tz('America/Los_Angeles').format('ddd M/D h:mmA zz')}]"
 
             line = re.sub(TIMER_REGEX, repl, line)
-            line = re.sub(r"<:kakera:\d+>", " Ka", line)
+            line = re.sub(r"<:kakera:\d+>", " <:kakera:879969751231791194>", line)
             lines_to_send.append(line)
 
         if lines_to_send:
