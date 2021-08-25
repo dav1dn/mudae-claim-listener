@@ -41,6 +41,7 @@ MARRIAGE_REGEXES = list(
 TIMER_REGEX = re.compile(r"\*\*(?P<hours>\d{1,2}h)?\s?(?P<minutes>\d{1,2})\*\*\smin\.")
 KAKERA_IN_DESCRIPTION_REGEX = re.compile(r"\*\*(?P<value>\d{2,4})\*\*")
 BELONGS_TO_FOOTER_REGEX = re.compile(r"Belongs to (?P<owner>.*)")
+KEY_REGEX = re.compile(r"(?P<key_type>(gold|silver|bronze|chaos)key):\d+>\s\((?P<num_keys>\d{1,2})\)")
 
 Channels = {
     "Announcements": None,
@@ -93,6 +94,8 @@ async def on_message(m: Message):
             # check if message has a character embed
             embed = m.embeds[0]
             character_name = str(embed.author.name)
+            description = embed.description
+
             if not character_name:
                 return
 
@@ -100,10 +103,10 @@ async def on_message(m: Message):
 
             # rolls channel
             if channel == Channels["Rolls"]:
-                description = embed.description
                 if isinstance(description, str) and (
                     match := KAKERA_IN_DESCRIPTION_REGEX.search(description)
                 ):
+
                     ka_value = match.group("value")
                     logger.info(
                         "Rolled [%s] in message_id=[%s]",
@@ -122,6 +125,16 @@ async def on_message(m: Message):
                     ):
                         belongs_to = match.group("owner")
                         kakera_react = True
+
+                        if (match := KEY_REGEX.search(description)):
+                            key_type = match.group("key_type")
+                            num_keys = int(match.group("num_keys"))
+                            logger.info("Received key for [%s]: [%s], [%s]!", character_name, key_type, num_keys, extra={ "description": description })
+                            emoji = discord.utils.find(lambda e: e.name == key_type, client.emojis)
+                            if num_keys > 5:
+                                await Channels["Announcements"].send(
+                                    content=f"**{belongs_to}** rolled a {str(emoji)} ({num_keys}) for {character_name}!"
+                                )
 
                         def check(reaction, user):
                             return user == author and "kakera" in str(reaction.emoji)
