@@ -172,7 +172,7 @@ async def on_message(m: Message):
 
                     RecentRolls[m.id] = roll
 
-                    if footer != Embed.Empty and "2 ROLLS LEFT" in footer.text:
+                    if footer != EmptyEmbed and footer.text and "2 ROLLS LEFT" in footer.text:
                         ALMOST_DONE_ROLLING = True
 
                     if ALMOST_DONE_ROLLING:
@@ -228,7 +228,8 @@ async def on_message(m: Message):
                         await Channels["Rolls"].send(
                             content=f"**Nice rolls!**\n", embed=claimables_embed
                         )
-                        await Channels["Rolls"].send(embed=kakera_rolls_embed)
+                        if len(kakera_rolls) > 0:
+                            await Channels["Rolls"].send(embed=kakera_rolls_embed)
 
                         ALMOST_DONE_ROLLING = False
                         ROLLS_LEFT = 3
