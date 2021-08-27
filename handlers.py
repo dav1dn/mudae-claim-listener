@@ -2,14 +2,22 @@ import logging
 from typing import TypedDict, Union, cast
 
 import discord
+from discord import colour
 from discord.client import Client
 from discord.embeds import Embed, EmptyEmbed
 from discord.message import Message
 
-from state import (ALMOST_DONE_ROLLING, BELONGS_TO_FOOTER_REGEX,
-                   KAKERA_IN_DESCRIPTION_REGEX, KEY_REGEX, ROLLS_LEFT,
-                   Channels, CharacterEmbeds, RecentRolls)
-from utils import get_emoji_by_name
+from state import (
+    ALMOST_DONE_ROLLING,
+    BELONGS_TO_FOOTER_REGEX,
+    KAKERA_IN_DESCRIPTION_REGEX,
+    KEY_REGEX,
+    ROLLS_LEFT,
+    Channels,
+    CharacterEmbeds,
+    RecentRolls,
+)
+from utils import get_emoji_by_name, get_member_by_name
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +72,17 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
                     )
                     emoji = get_emoji_by_name(client, key_type)
                     if num_keys >= 5:
-                        await Channels["Announcements"].send(
-                            content=f"**{belongs_to}** rolled a {str(emoji)} ({num_keys}) for {character_name}!"
+                        rolled_key_embed = discord.Embed(
+                            type="rich",
+                            colour=colour.Colour.random(seed=belongs_to),
+                            title=f"Rolled a key for **{character_name}**!",
+                            url=msg.jump_url,
                         )
+                        member = get_member_by_name(msg.guild, belongs_to)
+                        rolled_key_embed.set_author(name=belongs_to, icon_url=member.avatar_url if member else EmptyEmbed)
+                        rolled_key_embed.set_thumbnail(url=embed.image.url)
+                        rolled_key_embed.description = f"{str(emoji)} ({num_keys})"
+                        await Channels["Announcements"].send(embed=rolled_key_embed)
 
             try:
                 reaction, _user = await client.wait_for(

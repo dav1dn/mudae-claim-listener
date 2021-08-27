@@ -4,6 +4,9 @@ import os
 import re
 from typing import Dict, TypedDict, Union, cast
 
+from discord import member
+from utils import get_member_by_name
+
 import discord
 import pendulum
 from discord import Member, Message, TextChannel, colour
@@ -19,7 +22,9 @@ logging.getLogger().addHandler(logging.FileHandler("out.log"))
 
 logger = logging.getLogger(__name__)
 
-client = discord.Client()
+intents = discord.Intents.default()
+intents.members = True
+client = discord.Client(intents=intents)
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
@@ -60,13 +65,15 @@ async def on_message(msg: Message):
                 return
 
             embed: Embed = discord.Embed(
-                title=f"{waifu}",
+                title=f"Claimed **{waifu}**!\n",
                 colour=colour.Colour.random(seed=user),
                 type="rich",
                 url=msg.jump_url,
             )
-            embed.set_author(name=user)
 
+            # try to get Member
+            possible_member = get_member_by_name(msg.guild, user)
+            embed.set_author(name=user, icon_url=possible_member.avatar_url if possible_member else EmptyEmbed)
             cached_character: Union[Embed, None] = CharacterEmbeds.get(waifu)
 
             if cached_character:
@@ -77,7 +84,6 @@ async def on_message(msg: Message):
                         "React with any emoji to claim!", ""
                     ),
                 )
-
                 embed.set_thumbnail(url=cached_character.image.url)
 
             await Channels["Announcements"].send(
