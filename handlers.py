@@ -85,7 +85,7 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
                         )
                         rolled_key_embed.set_thumbnail(url=embed.image.url)
                         rolled_key_embed.description = f"{str(emoji)} ({num_keys})"
-                        res = Channels["Announcements"].send(embed=rolled_key_embed)
+                        await Channels["Announcements"].send(embed=rolled_key_embed)
 
             try:
                 reaction, _user = await client.wait_for(

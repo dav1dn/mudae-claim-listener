@@ -96,7 +96,7 @@ async def on_message(msg: Message):
                 )
                 embed.set_thumbnail(url=cached_character.image.url)
 
-            res = Channels["Announcements"].send(embed=embed)
+            await Channels["Announcements"].send(embed=embed)
 
     # check if hard-reset rolling
     if content.startswith("-done"):
