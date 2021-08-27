@@ -79,15 +79,18 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
                             url=msg.jump_url,
                         )
                         member = get_member_by_name(msg.guild, belongs_to)
-                        rolled_key_embed.set_author(name=belongs_to, icon_url=member.avatar_url if member else EmptyEmbed)
+                        rolled_key_embed.set_author(
+                            name=belongs_to,
+                            icon_url=member.avatar_url if member else EmptyEmbed,
+                        )
                         rolled_key_embed.set_thumbnail(url=embed.image.url)
                         rolled_key_embed.description = f"{str(emoji)} ({num_keys})"
-                        await Channels["Announcements"].send(embed=rolled_key_embed)
+                        res = Channels["Announcements"].send(embed=rolled_key_embed)
 
             try:
                 reaction, _user = await client.wait_for(
                     "reaction_add",
-                    timeout=4.0,
+                    timeout=5.0,
                     check=lambda reaction, user: user == msg.author
                     and "kakera" in str(reaction.emoji)
                     and reaction.message.id == msg.id,

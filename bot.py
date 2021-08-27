@@ -14,8 +14,15 @@ from discord.embeds import Embed, EmptyEmbed
 from expiringdict import ExpiringDict
 
 from handlers import done_rolling, handle_roll
-from state import (CATEGORY_ID, MARRIAGE_REGEXES, MUDAE_USER_ID,
-                   ROLLS_CHANNEL_ID, TIMER_REGEX, Channels, CharacterEmbeds)
+from state import (
+    CATEGORY_ID,
+    MARRIAGE_REGEXES,
+    MUDAE_USER_ID,
+    ROLLS_CHANNEL_ID,
+    TIMER_REGEX,
+    Channels,
+    CharacterEmbeds,
+)
 
 logging.basicConfig(level=logging.INFO)
 logging.getLogger().addHandler(logging.FileHandler("out.log"))
@@ -73,7 +80,10 @@ async def on_message(msg: Message):
 
             # try to get Member
             possible_member = get_member_by_name(msg.guild, user)
-            embed.set_author(name=user, icon_url=possible_member.avatar_url if possible_member else EmptyEmbed)
+            embed.set_author(
+                name=user,
+                icon_url=possible_member.avatar_url if possible_member else EmptyEmbed,
+            )
             cached_character: Union[Embed, None] = CharacterEmbeds.get(waifu)
 
             if cached_character:
@@ -86,9 +96,7 @@ async def on_message(msg: Message):
                 )
                 embed.set_thumbnail(url=cached_character.image.url)
 
-            await Channels["Announcements"].send(
-                content=f"**{user}** claimed **{waifu}**!", embed=embed
-            )
+            res = Channels["Announcements"].send(embed=embed)
 
     # check if hard-reset rolling
     if content.startswith("-done"):
@@ -110,7 +118,6 @@ async def on_message(msg: Message):
 
         message_lines = mudae_reply.content.split("\n")
         for line in message_lines:
-
             def repl(match):
                 full_match = match.group(0).replace("\n", "")
                 hour = (
