@@ -61,7 +61,7 @@ async def on_message(msg: Message):
 
             embed: Embed = discord.Embed(
                 title=f"{waifu}",
-                colour=colour.Colour.red(),
+                colour=colour.Colour.random(seed=user),
                 type="rich",
                 url=msg.jump_url,
             )
@@ -84,7 +84,7 @@ async def on_message(msg: Message):
                 )
 
             await Channels["Announcements"].send(
-                content=f"👉 👉 **{user}** claimed **{waifu}**!", embed=embed
+                content=f"**{user}** claimed **{waifu}**!", embed=embed
             )
 
     # check if hard-reset rolling
