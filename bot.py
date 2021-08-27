@@ -79,9 +79,6 @@ async def on_message(msg: Message):
                 )
 
                 embed.set_thumbnail(url=cached_character.image.url)
-                embed.add_field(
-                    name="\u200B", value=f"[Jump to Message]({msg.jump_url})"
-                )
 
             await Channels["Announcements"].send(
                 content=f"**{user}** claimed **{waifu}**!", embed=embed
