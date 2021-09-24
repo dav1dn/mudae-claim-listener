@@ -148,8 +148,13 @@ async def done_rolling():
 
     claimable_rolls_text = "\n".join(
         [
-            f"{'[[**%s**](%s)' % (roll['name'], roll['message_url']) if roll['kakera_value'] > average_kakera_value else '[**%s**' % roll['name']} \t {roll['kakera_value']} <:kakera:879969751231791194> \t ]"
-            for roll in claimable_rolls
+            (
+                "[**%s**](%s)" % (roll["name"], roll["message_url"])
+                if roll["kakera_value"] > average_kakera_value or i < 6
+                else "**%s**" % roll["name"]
+            )
+            + f" {roll['kakera_value']} <:kakera:879969751231791194> \t "
+            for i, roll in enumerate(claimable_rolls)
         ]
     )
     kakera_rolls_text = "\n".join(
@@ -171,8 +176,11 @@ async def done_rolling():
     ROLLS_LEFT = 3
     RecentRolls.clear()
 
+
 async def do_timer(minutes: int, msg: Message):
-    logger.info("Starting timer for [%s] for [%s] minutes.", msg.author.display_name, minutes)
-    await msg.add_reaction('👍')
+    logger.info(
+        "Starting timer for [%s] for [%s] minutes.", msg.author.display_name, minutes
+    )
+    await msg.add_reaction("👍")
     await asyncio.sleep(minutes * 60)
     await msg.reply("Your timer's up!")
