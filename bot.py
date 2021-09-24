@@ -13,7 +13,7 @@ from discord import Member, Message, TextChannel, colour
 from discord.embeds import Embed, EmptyEmbed
 from expiringdict import ExpiringDict
 
-from handlers import done_rolling, handle_roll
+from handlers import do_timer, done_rolling, handle_roll
 from state import (
     CATEGORY_ID,
     MARRIAGE_REGEXES,
@@ -118,6 +118,7 @@ async def on_message(msg: Message):
 
         message_lines = mudae_reply.content.split("\n")
         for line in message_lines:
+
             def repl(match):
                 full_match = match.group(0).replace("\n", "")
                 hour = (
@@ -134,6 +135,14 @@ async def on_message(msg: Message):
         if lines_to_send:
             await msg.channel.send(content="\n".join(lines_to_send))
             await mudae_reply.delete()
+
+    if content.startswith("$timer"):
+        try:
+            minutes = int(re.findall(r'\d+', content)[0])
+            await do_timer(minutes, msg)
+        except Exception as err:
+            logger.exception("Failed to start timer for message [%s] from [%s]", content, author)
+            await msg.add_reaction('👎')
 
 
 client.run(TOKEN)

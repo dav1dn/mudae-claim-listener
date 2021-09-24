@@ -3,7 +3,7 @@ from expiringdict import ExpiringDict
 from discord.embeds import Embed, EmptyEmbed
 
 import re
-from typing import Dict, TypedDict, Union 
+from typing import Dict, TypedDict, Union
 
 # CONFIG
 
@@ -14,7 +14,7 @@ MUDAE_USER_ID = 432610292342587392
 OWN_USER_ID = 54422593528143872
 
 MARRIAGE_REGEXES = list(
-map(
+    map(
         re.compile,
         [
             r"\*\*(?P<name>.+)\*\* and \*\*(?P<waifu>.+)\*\* are now married!",

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import TypedDict, Union, cast
 
@@ -90,7 +91,7 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
             try:
                 reaction, _user = await client.wait_for(
                     "reaction_add",
-                    timeout=5.0,
+                    timeout=10.0,
                     check=lambda reaction, user: user == msg.author
                     and "kakera" in str(reaction.emoji)
                     and reaction.message.id == msg.id,
@@ -169,3 +170,9 @@ async def done_rolling():
     ALMOST_DONE_ROLLING = False
     ROLLS_LEFT = 3
     RecentRolls.clear()
+
+async def do_timer(minutes: int, msg: Message):
+    logger.info("Starting timer for [%s] for [%s] minutes.", msg.author.display_name, minutes)
+    await msg.add_reaction('👍')
+    await asyncio.sleep(minutes * 60)
+    await msg.reply("Your timer's up!")
