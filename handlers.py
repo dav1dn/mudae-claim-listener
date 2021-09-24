@@ -59,6 +59,19 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
             belongs_to = match.group("owner")
             kakera_react = True
 
+            try:
+                reaction, _user = await client.wait_for(
+                    "reaction_add",
+                    timeout=10.0,
+                    check=lambda reaction, user: user == msg.author
+                    and "kakera" in str(reaction.emoji)
+                    and reaction.message.id == msg.id,
+                )
+                kakera_react = get_emoji_by_name(client, reaction.emoji.name)
+                logger.info("Rolled a Kakera react [%s]", str(kakera_react))
+            except:
+                pass
+
             if match := KEY_REGEX.search(description):
                 matches_iter = KEY_REGEX.finditer(description)
                 for match in matches_iter:
@@ -87,19 +100,6 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
                         rolled_key_embed.set_thumbnail(url=embed.image.url)
                         rolled_key_embed.description = f"{str(emoji)} ({num_keys})"
                         await Channels["Announcements"].send(embed=rolled_key_embed)
-
-            try:
-                reaction, _user = await client.wait_for(
-                    "reaction_add",
-                    timeout=10.0,
-                    check=lambda reaction, user: user == msg.author
-                    and "kakera" in str(reaction.emoji)
-                    and reaction.message.id == msg.id,
-                )
-                kakera_react = get_emoji_by_name(client, reaction.emoji.name)
-                logger.info("Rolled a Kakera react [%s]", str(kakera_react))
-            except:
-                pass
 
         roll: RecentRoll = {
             "name": character_name,
