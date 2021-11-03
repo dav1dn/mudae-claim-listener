@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import TypedDict, Union, cast
+from typing import Callable, Optional, TypedDict, Union, cast
 
 import discord
 from discord import colour
@@ -29,6 +29,8 @@ class RecentRoll(TypedDict):
     message_url: str
     is_kakera_react: Union[str, bool]
     belongs_to: Union[str, None]
+    num_keys: Optional[int]
+    key_type: Optional[str]
 
 
 async def handle_roll(client: Client, msg: Message, character_name: str, embed: Embed):
@@ -55,6 +57,17 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
 
         kakera_react = False
         belongs_to = None
+
+        roll: RecentRoll = {
+            "name": character_name,
+            "kakera_value": int(ka_value),
+            "message_url": msg.jump_url,
+            "is_kakera_react": kakera_react,
+            "belongs_to": belongs_to,
+            "num_keys": None,
+            "key_type": None,
+        }
+
         if footer_text and (match := BELONGS_TO_FOOTER_REGEX.search(footer_text)):
             belongs_to = match.group("owner")
             kakera_react = True
@@ -62,7 +75,7 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
             try:
                 reaction, _user = await client.wait_for(
                     "reaction_add",
-                    timeout=10.0,
+                    timeout=3.0,
                     check=lambda reaction, user: user == msg.author
                     and "kakera" in str(reaction.emoji)
                     and reaction.message.id == msg.id,
@@ -72,11 +85,16 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
             except:
                 pass
 
+            roll["belongs_to"] = belongs_to
+            roll["is_kakera_react"] = kakera_react
+
             if match := KEY_REGEX.search(description):
                 matches_iter = KEY_REGEX.finditer(description)
                 for match in matches_iter:
                     key_type = match.group("key_type")
                     num_keys = int(match.group("num_keys"))
+                    roll["num_keys"] = num_keys
+                    roll["key_type"] = key_type
                     logger.info(
                         "Received key for [%s]: [%s], [%s]!",
                         character_name,
@@ -85,7 +103,7 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
                         extra={"description": description},
                     )
                     emoji = get_emoji_by_name(client, key_type)
-                    if num_keys >= 5:
+                    if num_keys > 6:
                         rolled_key_embed = discord.Embed(
                             type="rich",
                             colour=colour.Colour.random(seed=belongs_to),
@@ -98,16 +116,8 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
                             icon_url=member.avatar_url if member else EmptyEmbed,
                         )
                         rolled_key_embed.set_thumbnail(url=embed.image.url)
-                        rolled_key_embed.description = f"{str(emoji)} ({num_keys})"
+                        rolled_key_embed.description = f"{str(emoji)} ({num_keys})\n<:kakera:879969751231791194> (+{ka_value})"
                         await Channels["Announcements"].send(embed=rolled_key_embed)
-
-        roll: RecentRoll = {
-            "name": character_name,
-            "kakera_value": int(ka_value),
-            "message_url": msg.jump_url,
-            "is_kakera_react": kakera_react,
-            "belongs_to": belongs_to,
-        }
 
         RecentRolls[msg.id] = roll
 
@@ -118,10 +128,10 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
             ROLLS_LEFT = ROLLS_LEFT - 1
 
         if ROLLS_LEFT <= 0:
-            await done_rolling()
+            await done_rolling(client)
 
 
-async def done_rolling():
+async def done_rolling(client: Client):
     global ALMOST_DONE_ROLLING
     global ROLLS_LEFT
 
@@ -157,9 +167,15 @@ async def done_rolling():
             for i, roll in enumerate(claimable_rolls)
         ]
     )
+
+    possible_key_text: Callable[[RecentRoll], str] = (
+        lambda roll: f"< {get_emoji_by_name(client, roll['key_type'])}: {roll['num_keys']} >"
+        if roll["key_type"]
+        else ""
+    )
     kakera_rolls_text = "\n".join(
         [
-            f"[**{roll['name']}**]({roll['message_url']})\t<{roll['is_kakera_react']}> ({roll['belongs_to']})"
+            f"[**{roll['name']}**]({roll['message_url']})\t<{roll['is_kakera_react']}> {possible_key_text(roll)} ({roll['belongs_to']})"
             for roll in kakera_rolls
         ]
     )

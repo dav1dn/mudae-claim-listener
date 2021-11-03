@@ -13,7 +13,7 @@ def strip_emojis(str):
 
 
 def get_emoji_by_name(client, name):
-    return discord.utils.find(lambda e: e.name == name, client.emojis) or name
+    return discord.utils.find(lambda e: e.name == name, client.emojis) or '?'
 
 def get_member_by_name(guild, name):
     return discord.utils.get(guild.members, name=name)
