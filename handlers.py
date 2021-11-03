@@ -11,6 +11,7 @@ from discord.message import Message
 from state import (
     ALMOST_DONE_ROLLING,
     BELONGS_TO_FOOTER_REGEX,
+    DEFAULT_KAKERA_REACT,
     KAKERA_IN_DESCRIPTION_REGEX,
     KEY_REGEX,
     ROLLS_LEFT,
@@ -68,9 +69,13 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
             "key_type": None,
         }
 
+        if footer_text and "2 ROLLS LEFT" in footer_text:
+            ALMOST_DONE_ROLLING = True
+
         if footer_text and (match := BELONGS_TO_FOOTER_REGEX.search(footer_text)):
             belongs_to = match.group("owner")
-            kakera_react = True
+            kakera_react = DEFAULT_KAKERA_REACT
+            roll["belongs_to"] = belongs_to
 
             try:
                 reaction, _user = await client.wait_for(
@@ -85,7 +90,6 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
             except:
                 pass
 
-            roll["belongs_to"] = belongs_to
             roll["is_kakera_react"] = kakera_react
 
             if match := KEY_REGEX.search(description):
@@ -121,12 +125,9 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
 
         RecentRolls[msg.id] = roll
 
-        if footer_text and "2 ROLLS LEFT" in footer_text:
-            ALMOST_DONE_ROLLING = True
-
         if ALMOST_DONE_ROLLING:
             ROLLS_LEFT = ROLLS_LEFT - 1
-
+            
         if ROLLS_LEFT <= 0:
             await done_rolling(client)
 
