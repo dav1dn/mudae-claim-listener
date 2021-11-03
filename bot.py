@@ -100,7 +100,7 @@ async def on_message(msg: Message):
 
     # check if hard-reset rolling
     if content.startswith("-done"):
-        await done_rolling()
+        await done_rolling(client)
 
     # check if asking for timers
     if content.startswith("$tu f"):

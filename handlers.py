@@ -169,7 +169,7 @@ async def done_rolling(client: Client):
     )
 
     possible_key_text: Callable[[RecentRoll], str] = (
-        lambda roll: f"< {get_emoji_by_name(client, roll['key_type'])}: {roll['num_keys']} >"
+        lambda roll: f"<{get_emoji_by_name(client, roll['key_type'])} : {roll['num_keys']}>"
         if roll["key_type"]
         else ""
     )
