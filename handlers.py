@@ -32,6 +32,7 @@ class RecentRoll(TypedDict):
     belongs_to: Union[str, None]
     num_keys: Optional[int]
     key_type: Optional[str]
+    should_decrement_counter: bool # if the roll is on or after the '2 rolls remaining!' text and should decrement the counter
 
 
 async def handle_roll(client: Client, msg: Message, character_name: str, embed: Embed):
@@ -67,10 +68,14 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
             "belongs_to": belongs_to,
             "num_keys": None,
             "key_type": None,
+            "should_decrement_counter": False,
         }
 
         if footer_text and "2 ROLLS LEFT" in footer_text:
             ALMOST_DONE_ROLLING = True
+        
+        if ALMOST_DONE_ROLLING:
+            roll["should_decrement_counter"] = True
 
         if footer_text and (match := BELONGS_TO_FOOTER_REGEX.search(footer_text)):
             belongs_to = match.group("owner")
@@ -125,9 +130,9 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
 
         RecentRolls[msg.id] = roll
 
-        if ALMOST_DONE_ROLLING:
+        if roll["should_decrement_counter"]:
             ROLLS_LEFT = ROLLS_LEFT - 1
-            
+
         if ROLLS_LEFT <= 0:
             await done_rolling(client)
 
@@ -135,6 +140,9 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
 async def done_rolling(client: Client):
     global ALMOST_DONE_ROLLING
     global ROLLS_LEFT
+
+    ALMOST_DONE_ROLLING = False
+    ROLLS_LEFT = 3
 
     rolls = RecentRolls.values()
     claimable_rolls = [roll for roll in rolls if not roll["is_kakera_react"]]
@@ -189,8 +197,6 @@ async def done_rolling(client: Client):
     if len(kakera_rolls) > 0:
         await Channels["Rolls"].send(embed=kakera_rolls_embed)
 
-    ALMOST_DONE_ROLLING = False
-    ROLLS_LEFT = 3
     RecentRolls.clear()
 
 
