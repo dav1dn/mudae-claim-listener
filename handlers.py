@@ -209,7 +209,7 @@ async def do_timer(minutes: int, msg: Message):
     try:
         seconds_to_wait = (
             (datetime.now() + timedelta(minutes=minutes)) - datetime.now()
-        ).seconds
+        ).total_seconds()
 
         if seconds_to_wait < 0:
             raise ValueError("inappropriate time sent")
