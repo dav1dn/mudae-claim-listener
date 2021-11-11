@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime, timedelta
 from typing import Callable, Optional, TypedDict, Union, cast
 
 import discord
@@ -32,7 +33,7 @@ class RecentRoll(TypedDict):
     belongs_to: Union[str, None]
     num_keys: Optional[int]
     key_type: Optional[str]
-    should_decrement_counter: bool # if the roll is on or after the '2 rolls remaining!' text and should decrement the counter
+    should_decrement_counter: bool  # if the roll is on or after the '2 rolls remaining!' text and should decrement the counter
 
 
 async def handle_roll(client: Client, msg: Message, character_name: str, embed: Embed):
@@ -73,7 +74,7 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
 
         if footer_text and "2 ROLLS LEFT" in footer_text:
             ALMOST_DONE_ROLLING = True
-        
+
         if ALMOST_DONE_ROLLING:
             roll["should_decrement_counter"] = True
 
@@ -92,6 +93,10 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
                 )
                 kakera_react = get_emoji_by_name(client, reaction.emoji.name)
                 logger.info("Rolled a Kakera react [%s]", str(kakera_react))
+                if "kakeraY" in reaction.emoji.name:
+                    asyncio.create_task(msg.add_reaction('🍋'))
+                elif "kakeraL" in reaction.emoji.name:
+                    asyncio.create_task(msg.add_reaction('💎'))
             except:
                 pass
 
@@ -201,9 +206,28 @@ async def done_rolling(client: Client):
 
 
 async def do_timer(minutes: int, msg: Message):
-    logger.info(
-        "Starting timer for [%s] for [%s] minutes.", msg.author.display_name, minutes
-    )
-    await msg.add_reaction("👍")
-    await asyncio.sleep(minutes * 60)
-    await msg.reply("Your timer's up!")
+    try:
+        seconds_to_wait = (
+            (datetime.now() + timedelta(minutes=minutes)) - datetime.now()
+        ).seconds
+
+        if seconds_to_wait < 0:
+            raise ValueError("inappropriate time sent")
+
+        logger.info(
+            "Starting timer for [%s] for [%s] minutes, adjusted to [%s]s",
+            msg.author.display_name,
+            minutes,
+            seconds_to_wait,
+        )
+
+        await msg.add_reaction("👍")
+        await asyncio.sleep(seconds_to_wait)
+        await msg.reply("Your timer's up!")
+    except:
+        logger.exception(
+            "Error setting timer for [%s] for [%s] minutes.",
+            msg.author.display_name,
+            minutes,
+        )
+        await msg.add_reaction("❌")
