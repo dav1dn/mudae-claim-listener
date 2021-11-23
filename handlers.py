@@ -95,6 +95,12 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
                 logger.info("Rolled a Kakera react [%s]", str(kakera_react))
                 if "kakeraY" in reaction.emoji.name:
                     asyncio.create_task(msg.add_reaction('🍋'))
+                elif "kakeraO" in reaction.emoji.name:
+                    asyncio.create_task(msg.add_reaction('🟧'))
+                elif "kakeraR" in reaction.emoji.name:
+                    asyncio.create_task(msg.add_reaction('🔥'))
+                elif "kakeraW" in reaction.emoji.name:
+                    asyncio.create_task(msg.add_reaction('🌈'))
                 elif "kakeraL" in reaction.emoji.name:
                     asyncio.create_task(msg.add_reaction('💎'))
             except:
@@ -208,7 +214,7 @@ async def done_rolling(client: Client):
 async def do_timer(minutes: int, msg: Message):
     try:
         seconds_to_wait = (
-            (datetime.now() + timedelta(minutes=minutes)) - datetime.now()
+            (datetime.now() + timedelta(minutes=minutes)).replace(second=0, microsecond=0) - datetime.now()
         ).total_seconds()
 
         if seconds_to_wait < 0:
