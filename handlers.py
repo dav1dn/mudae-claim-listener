@@ -43,10 +43,10 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
     CharacterEmbeds[character_name] = embed
 
     if isinstance(description, str) and (
-        match := KAKERA_IN_DESCRIPTION_REGEX.search(description)
-    ):
-
-        ka_value = match.group("value")
+        kakera_match := KAKERA_IN_DESCRIPTION_REGEX.search(description)
+    ) and "Claim Rank" not in description:
+        ka_value = kakera_match.group("value")
+        
         logger.info(
             "Rolled [%s] in message_id=[%s]",
             character_name,
@@ -135,6 +135,7 @@ async def handle_roll(client: Client, msg: Message, character_name: str, embed: 
                             name=belongs_to,
                             icon_url=member.avatar_url if member else EmptyEmbed,
                         )
+                        ka_value = ka_value if kakera_match.group("add") else 0
                         rolled_key_embed.set_thumbnail(url=embed.image.url)
                         rolled_key_embed.description = f"{str(emoji)} ({num_keys})\n<:kakera:879969751231791194> (+{ka_value})"
                         await Channels["Announcements"].send(embed=rolled_key_embed)

@@ -27,7 +27,7 @@ MARRIAGE_REGEXES = list(
 )
 
 TIMER_REGEX = re.compile(r"\*\*(?P<hours>\d{1,2}h)?\s?(?P<minutes>\d{1,2})\*\*\smin\.")
-KAKERA_IN_DESCRIPTION_REGEX = re.compile(r"\*\*\+?(?P<value>\d{2,4})\*\*")
+KAKERA_IN_DESCRIPTION_REGEX = re.compile(r"\*\*(?P<add>\+)?(?P<value>\d{2,5})\*\*")
 BELONGS_TO_FOOTER_REGEX = re.compile(r"Belongs to (?P<owner>.*)")
 KEY_REGEX = re.compile(
     r"(?P<key_type>(gold|silver|bronze|chaos)key):\d+>\s\(\*{2}?(?P<num_keys>\d{1,2})\*{2}?\)"
